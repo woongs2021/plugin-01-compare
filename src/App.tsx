@@ -24,6 +24,12 @@ type SelectionState = {
   frameIds: [string, string] | null
 }
 
+type PreviewState =
+  | { status: 'idle' }
+  | { status: 'loading'; scale: number }
+  | { status: 'ready'; scale: number; frameAUrl: string; frameBUrl: string }
+  | { status: 'error'; message: string }
+
 export default function App() {
   const [selection, setSelection] = useState<SelectionState>({ count: 0, frameIds: null })
   const [provider, setProvider] = useState<Provider>(() => {
@@ -51,12 +57,24 @@ export default function App() {
   const [opacity, setOpacity] = useState(60)
   const [isComparing, setIsComparing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<PreviewState>({ status: 'idle' })
+  const [previewScale, setPreviewScale] = useState(1)
 
   const isActive = selection.count === 2 && selection.frameIds !== null
 
   const sendToFigma = useCallback((payload: unknown) => {
     parent.postMessage({ pluginMessage: payload }, '*')
   }, [])
+
+  const requestPreview = useCallback(
+    (scale?: number) => {
+      if (!isActive) return
+      const s = scale ?? previewScale
+      setPreview({ status: 'loading', scale: s })
+      sendToFigma({ type: 'getPreviewImages', scale: s })
+    },
+    [isActive, previewScale, sendToFigma],
+  )
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -68,6 +86,17 @@ export default function App() {
           frameIds: msg.frameIds ?? null,
         })
       }
+      if (msg.type === 'previewImages') {
+        setPreview({
+          status: 'ready',
+          scale: msg.data?.scale ?? 1,
+          frameAUrl: msg.data?.frameAUrl ?? '',
+          frameBUrl: msg.data?.frameBUrl ?? '',
+        })
+      }
+      if (msg.type === 'previewError') {
+        setPreview({ status: 'error', message: msg.message ?? '프리뷰 생성에 실패했습니다.' })
+      }
       if (msg.type === 'reportError') {
         setError(msg.message ?? '리포트 생성에 실패했습니다.')
       }
@@ -78,9 +107,12 @@ export default function App() {
   }, [sendToFigma])
 
   useEffect(() => {
-    if (!isActive) return
-    sendToFigma({ type: 'setOverlayOpacity', opacity })
-  }, [isActive, opacity, sendToFigma])
+    if (!isActive) {
+      setPreview({ status: 'idle' })
+      return
+    }
+    requestPreview()
+  }, [isActive, requestPreview, selection.frameIds])
 
   useEffect(() => {
     try {
@@ -151,6 +183,48 @@ export default function App() {
       <h1 className={styles.title}>
         {isActive ? 'Frame Compare' : 'No selected frames'}
       </h1>
+
+      <section className={styles.section} aria-label="Preview" data-disabled={!isActive}>
+        <label className={styles.label}>
+          오버레이 프리뷰
+          <span className={styles.optional}>캔버스 변경 없음</span>
+        </label>
+        <div className={styles.previewWrap}>
+          <div className={styles.previewStage}>
+            {preview.status === 'ready' && (
+              <>
+                <img className={styles.previewImg} src={preview.frameAUrl} alt="Frame A" />
+                <img className={styles.previewImg} src={preview.frameBUrl} alt="Frame B overlay" style={{ opacity: opacity / 100 }} />
+              </>
+            )}
+            {preview.status === 'loading' && <p className={styles.hint} style={{ padding: 8 }}>프리뷰 생성 중…</p>}
+            {preview.status === 'error' && <p className={styles.error} style={{ padding: 8 }}>{preview.message}</p>}
+            {preview.status === 'idle' && <p className={styles.hint} style={{ padding: 8 }}>프레임 2개를 선택하면 프리뷰가 표시됩니다.</p>}
+          </div>
+          <div className={styles.previewFooter}>
+            <select
+              className={styles.select}
+              value={previewScale}
+              onChange={(e) => setPreviewScale(Number(e.target.value))}
+              aria-label="Preview scale"
+              style={{ width: 140 }}
+              disabled={!isActive}
+            >
+              <option value={0.5}>해상도 0.5x</option>
+              <option value={1}>해상도 1x</option>
+              <option value={2}>해상도 2x</option>
+            </select>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => requestPreview(previewScale)}
+              disabled={!isActive || preview.status === 'loading'}
+            >
+              새로고침
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className={styles.section}>
         <label className={styles.label}>AI 제공자</label>

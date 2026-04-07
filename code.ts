@@ -22,13 +22,14 @@ type SerializedNode = {
 
 type MessageFromUI =
   | { type: 'getSelection' }
-  | { type: 'setOverlayOpacity'; opacity: number }
+  | { type: 'getPreviewImages'; scale?: number }
   | { type: 'getFrameData' }
   | { type: 'compareFrames'; payload: { matchRate: number; differences: string; guidelines: string } }
 
 type MessageToUI =
   | { type: 'selectionChange'; count: number; frameIds: [string, string] | null }
-  | { type: 'overlayApplied' }
+  | { type: 'previewImages'; data: { frameAUrl: string; frameBUrl: string; scale: number } }
+  | { type: 'previewError'; message: string }
   | { type: 'frameData'; data: { frameA: SerializedNode; frameB: SerializedNode } }
   | { type: 'reportCreated'; frameId: string }
   | { type: 'reportError'; message: string }
@@ -79,14 +80,41 @@ function notifySelectionToUI() {
   figma.ui.postMessage(payload)
 }
 
-function applyOverlay(opacity: number) {
+function bytesToDataUrl(bytes: Uint8Array, mimeType: string) {
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
+  }
+  const base64 = figma.base64Encode(binary)
+  return `data:${mimeType};base64,${base64}`
+}
+
+async function sendPreviewImagesToUI(scale = 1) {
   const frames = getSelectedFrameNodes()
   if (frames.length !== 2) return
-  const [original, compare] = frames
-  compare.x = original.x
-  compare.y = original.y
-  compare.opacity = opacity / 100
-  figma.ui.postMessage({ type: 'overlayApplied' } as MessageToUI)
+  const [frameA, frameB] = frames
+  const safeScale = Number.isFinite(scale) ? Math.min(2, Math.max(0.25, scale)) : 1
+
+  try {
+    const [aBytes, bBytes] = await Promise.all([
+      frameA.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: safeScale } }),
+      frameB.exportAsync({ format: 'PNG', constraint: { type: 'SCALE', value: safeScale } }),
+    ])
+    figma.ui.postMessage({
+      type: 'previewImages',
+      data: {
+        frameAUrl: bytesToDataUrl(aBytes, 'image/png'),
+        frameBUrl: bytesToDataUrl(bBytes, 'image/png'),
+        scale: safeScale,
+      },
+    } as MessageToUI)
+  } catch (e) {
+    figma.ui.postMessage({
+      type: 'previewError',
+      message: e instanceof Error ? e.message : '프리뷰 이미지를 생성하지 못했습니다.',
+    } as MessageToUI)
+  }
 }
 
 async function createReportFrame(report: { matchRate: number; differences: string; guidelines: string }) {
@@ -185,8 +213,8 @@ figma.ui.onmessage = async (msg: MessageFromUI) => {
     case 'getSelection':
       notifySelectionToUI()
       break
-    case 'setOverlayOpacity':
-      applyOverlay(msg.opacity)
+    case 'getPreviewImages':
+      await sendPreviewImagesToUI(msg.scale ?? 1)
       break
     case 'getFrameData':
       sendFrameDataToUI()
