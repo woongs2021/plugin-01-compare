@@ -1,0 +1,34 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+  background: var(--figma-bg);
+  color: var(--figma-fg);
+}
+
+#root {
+  min-height: 100vh;
+  padding: 12px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input[type='range'] {
+  cursor: pointer;
+}
+
+.disabled,
+[data-disabled='true'] {
+  opacity: 0.4;
+  pointer-events: none;
+}

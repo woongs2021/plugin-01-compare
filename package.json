@@ -1,0 +1,25 @@
+{
+  "name": "figma-frame-compare-plugin",
+  "version": "1.0.0",
+  "description": "두 프레임을 Overlay 비교하고 AI 리포트를 생성하는 Figma Plugin",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:ui && node scripts/embed-ui.js && npm run build:code",
+    "build:code": "esbuild code.ts --bundle --outfile=code.js --target=es2015",
+    "build:ui": "vite build",
+    "dev": "vite build --watch"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.90.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0"
+  }
+}

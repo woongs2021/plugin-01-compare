@@ -1,0 +1,10 @@
+{
+  "name": "Frame Compare - 피그마 검증 툴",
+  "id": "frame-compare-verification-tool",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["https://generativelanguage.googleapis.com", "https://api.groq.com"]
+  }
+}
