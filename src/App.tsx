@@ -184,7 +184,7 @@ export default function App() {
         {isActive ? 'Frame Compare' : 'No selected frames'}
       </h1>
 
-      <section className={styles.section} aria-label="Preview" data-disabled={!isActive}>
+      <section className={`${styles.section} ${styles.growSection}`} aria-label="Preview" data-disabled={!isActive}>
         <label className={styles.label}>
           오버레이 프리뷰
           <span className={styles.optional}>캔버스 변경 없음</span>

@@ -81,12 +81,7 @@ function notifySelectionToUI() {
 }
 
 function bytesToDataUrl(bytes: Uint8Array, mimeType: string) {
-  let binary = ''
-  const chunkSize = 0x8000
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize))
-  }
-  const base64 = figma.base64Encode(binary)
+  const base64 = figma.base64Encode(bytes)
   return `data:${mimeType};base64,${base64}`
 }
 
@@ -191,7 +186,7 @@ async function createReportFrame(report: { matchRate: number; differences: strin
   figma.ui.postMessage({ type: 'reportCreated', frameId: reportFrame.id } as MessageToUI)
 }
 
-figma.showUI(__html__, { width: 360, height: 480 })
+figma.showUI(__html__, { width: 420, height: 720 })
 
 notifySelectionToUI()
 figma.on('selectionchange', notifySelectionToUI)

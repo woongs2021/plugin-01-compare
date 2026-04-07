@@ -42,6 +42,14 @@ npm install
 npm run build
 ```
 
+## 빌드 없이 바로 실행(배포/공유용)
+
+Figma는 `manifest.json`의 `"main": "code.js"`를 그대로 로드합니다.  
+다른 컴퓨터에서 **클론만 하고 바로 실행**되게 하려면, 레포에 `code.js`(번들 결과)가 포함되어 있어야 합니다.
+
+- 이 레포는 `code.js`를 **커밋 대상**으로 둡니다.
+- 소스(`code.ts`, `src/*`)를 수정했다면, 변경 반영을 위해 로컬에서 `npm run build` 후 `code.js`를 함께 커밋/푸시하세요.
+
 ## 개발
 
 - **UI만 수정할 때**: `npm run build:ui` 후 `node scripts/embed-ui.js` 실행 후 `npm run build:code`. 또는 한 번에 `npm run build`.

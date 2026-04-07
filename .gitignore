@@ -1,6 +1,5 @@
 node_modules/
 dist/
-code.js
 html-embed.generated.ts
 *.log
 .DS_Store
