@@ -2,11 +2,18 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
 .section[data-disabled='true'] {
   opacity: 0.6;
   pointer-events: none;
+}
+
+.growSection {
+  flex: 1;
+  min-height: 0;
 }
 
 .title {
@@ -27,12 +34,17 @@
   border-radius: 8px;
   background: var(--figma-bg, #fff);
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .previewStage {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  flex: 1;
+  min-height: 240px;
   background: repeating-conic-gradient(from 90deg, #f3f3f3 0 25%, #ffffff 0 50%) 0 0 / 16px 16px;
 }
 
