@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Frame Compare Offline</title>
+    <style>
+      :root {
+        --bg-dark: #000000;
+        --bg-light: #f5f5f7;
+        --text-dark: #1d1d1f;
+        --text-light: #ffffff;
+        --text-secondary: rgba(255, 255, 255, 0.8);
+        --text-tertiary: rgba(255, 255, 255, 0.48);
+        --apple-blue: #0071e3;
+        --apple-link-blue-dark: #2997ff;
+        --line-dark: rgba(255, 255, 255, 0.14);
+        --surface-dark-1: #272729;
+        --surface-dark-2: #262628;
+        --overlay: rgba(210, 210, 215, 0.64);
+        --danger: #ff4d4f;
+      }
+      * { box-sizing:border-box; }
+      html, body {
+        width:100%;
+        height:100%;
+        margin:0;
+        background:var(--bg-dark);
+        color:var(--text-light);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        overflow:hidden;
+      }
+      .app {
+        width:100%;
+        height:100%;
+        display:flex;
+        flex-direction:column;
+        transition: background-color 180ms ease, color 180ms ease;
+      }
+      .topbar {
+        height:48px;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        padding:0 14px;
+        border-bottom:1px solid var(--line-dark);
+        background:rgba(0, 0, 0, 0.8);
+        backdrop-filter:saturate(180%) blur(20px);
+      }
+      .title {
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size:12px;
+        line-height:1.33;
+        letter-spacing:-0.12px;
+        font-weight:400;
+        color:var(--text-light);
+      }
+      .toolbar { display:flex; align-items:center; gap:8px; }
+      .btn {
+        height:32px;
+        border-radius:8px;
+        border:1px solid transparent;
+        background:var(--surface-dark-1);
+        color:var(--text-light);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size:14px;
+        line-height:1.29;
+        letter-spacing:-0.224px;
+        font-weight:400;
+        padding:0 14px;
+        cursor:pointer;
+        transition:background-color 140ms ease, transform 140ms ease;
+      }
+      .btn:hover { background:var(--surface-dark-2); }
+      .btn:focus-visible { outline:2px solid var(--apple-blue); outline-offset:2px; }
+      .btn.primary {
+        border-color:transparent;
+        background:var(--apple-blue);
+        color:var(--text-light);
+      }
+      .btn.primary:hover { background:#0077ed; }
+      .size-mode-btn.active {
+        border-color: var(--apple-blue);
+        background: rgba(0, 113, 227, 0.22);
+      }
+      .stage-wrap {
+        position:relative;
+        flex:1;
+        min-height:0;
+        background:var(--bg-dark);
+        border-bottom:1px solid var(--line-dark);
+        transition: background-color 180ms ease, border-color 180ms ease, opacity 180ms ease, filter 180ms ease;
+      }
+      #compareCanvas { width:100%; height:100%; display:block; cursor:grab; }
+      #compareCanvas.dragging { cursor:grabbing; }
+      .overlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; text-align:center; padding:20px; pointer-events:none; }
+      .overlay.show { display:flex; }
+      .overlay-card {
+        background:rgba(0, 0, 0, 0.82);
+        border:1px solid var(--line-dark);
+        border-radius:12px;
+        padding:18px 20px;
+        max-width:560px;
+        color:var(--text-secondary);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size:14px;
+        line-height:1.29;
+        letter-spacing:-0.224px;
+      }
+      .loading { display:flex; align-items:center; gap:10px; color:var(--text); }
+      .spinner { width:16px; height:16px; border-radius:999px; border:2px solid rgba(255,255,255,.25); border-top-color:var(--apple-blue); animation:spin 800ms linear infinite; }
+      @keyframes spin { to { transform:rotate(360deg); } }
+      .bottombar {
+        background:#000;
+        padding:12px 14px 14px;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        transition: background-color 180ms ease, color 180ms ease, opacity 180ms ease, filter 180ms ease;
+      }
+      .tabs { display:flex; gap:8px; }
+      .tab {
+        min-width:92px;
+        height:32px;
+        border-radius:980px;
+        border:1px solid var(--apple-link-blue-dark);
+        background:transparent;
+        color:var(--apple-link-blue-dark);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size:14px;
+        line-height:1.29;
+        letter-spacing:-0.224px;
+        font-weight:400;
+        cursor:pointer;
+        transition:all 140ms ease;
+      }
+      .tab:hover { text-decoration:underline; }
+      .tab:focus-visible { outline:2px solid var(--apple-blue); outline-offset:2px; }
+      .tab.active {
+        color:var(--text-light);
+        border-color:var(--apple-blue);
+        background:var(--apple-blue);
+      }
+      .controls { display:flex; align-items:center; gap:10px; }
+      .control-label {
+        width:130px;
+        color:var(--text-secondary);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size:12px;
+        line-height:1.33;
+        letter-spacing:-0.12px;
+        font-weight:400;
+      }
+      .range { flex:1; accent-color:var(--apple-blue); }
+      .value {
+        width:54px;
+        text-align:right;
+        color:var(--text-light);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size:12px;
+        line-height:1.33;
+        letter-spacing:-0.12px;
+        font-weight:600;
+      }
+      .hint {
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size:12px;
+        line-height:1.33;
+        letter-spacing:-0.12px;
+        color:var(--text-tertiary);
+      }
+      .preset-help {
+        margin-left: 6px;
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 11px;
+        line-height: 1.33;
+        letter-spacing: -0.08px;
+        color: var(--text-tertiary);
+      }
+      .diff-count {
+        margin-left: 8px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line-dark);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 11px;
+        line-height: 1.33;
+        letter-spacing: -0.08px;
+        white-space: nowrap;
+      }
+      .error-text { color:var(--danger); font-size:12px; }
+      .preset-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .preset-btn {
+        position: relative;
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line-dark);
+        background: var(--surface-dark-1);
+        color: var(--text-light);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 12px;
+        line-height: 1.33;
+        letter-spacing: -0.12px;
+        cursor: pointer;
+        transition: background-color 140ms ease, border-color 140ms ease;
+      }
+      .preset-btn:hover {
+        background: var(--surface-dark-2);
+      }
+      .preset-btn.active {
+        border-color: var(--apple-blue);
+        background: rgba(0, 113, 227, 0.2);
+      }
+      .preset-btn::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 8px);
+        transform: translateX(-50%) translateY(4px);
+        min-width: 180px;
+        max-width: 240px;
+        padding: 7px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(28, 28, 30, 0.95);
+        color: rgba(255, 255, 255, 0.92);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 11px;
+        line-height: 1.35;
+        letter-spacing: -0.08px;
+        text-align: center;
+        white-space: normal;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+        transition-delay: 0ms;
+        z-index: 10;
+      }
+      .preset-btn::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 3px);
+        width: 8px;
+        height: 8px;
+        transform: translateX(-50%) rotate(45deg);
+        border-right: 1px solid rgba(255, 255, 255, 0.16);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(28, 28, 30, 0.95);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+        transition-delay: 0ms;
+        z-index: 9;
+      }
+      .preset-btn:hover::after,
+      .preset-btn:hover::before,
+      .preset-btn:focus-visible::after,
+      .preset-btn:focus-visible::before {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+        transition-delay: 120ms;
+      }
+
+      body.theme-light {
+        background: var(--bg-light);
+        color: var(--text-dark);
+        transition: background-color 180ms ease, color 180ms ease;
+      }
+      body.theme-light .stage-wrap {
+        background: var(--bg-light);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+      }
+      body.theme-light .bottombar {
+        background: var(--bg-light);
+      }
+      body.theme-light .overlay-card {
+        background: rgba(245, 245, 247, 0.95);
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        color: rgba(0, 0, 0, 0.8);
+      }
+      body.theme-light .control-label {
+        color: rgba(0, 0, 0, 0.8);
+      }
+      body.theme-light .value {
+        color: var(--text-dark);
+      }
+      body.theme-light .hint {
+        color: rgba(0, 0, 0, 0.48);
+      }
+      body.theme-light .preset-help {
+        color: rgba(0, 0, 0, 0.48);
+      }
+      body.theme-light .diff-count {
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        background: rgba(0, 0, 0, 0.04);
+        color: rgba(0, 0, 0, 0.68);
+      }
+      body.theme-light .preset-btn {
+        background: #fafafc;
+        color: rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.12);
+      }
+      body.theme-light .preset-btn:hover {
+        background: #ededf2;
+      }
+      body.theme-light .preset-btn.active {
+        border-color: var(--apple-blue);
+        background: rgba(0, 113, 227, 0.12);
+      }
+      body.theme-light .preset-btn::after {
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        background: rgba(250, 250, 252, 0.98);
+        color: rgba(0, 0, 0, 0.78);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+      }
+      body.theme-light .preset-btn::before {
+        border-right: 1px solid rgba(0, 0, 0, 0.14);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.14);
+        background: rgba(250, 250, 252, 0.98);
+      }
+      body.theme-light .btn {
+        background: #fafafc;
+        color: rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      body.theme-light .btn:hover {
+        background: #ededf2;
+      }
+      body.theme-light .btn.primary {
+        background: var(--apple-blue);
+        color: var(--text-light);
+        border-color: transparent;
+      }
+      body.theme-light .size-mode-btn.active {
+        border-color: var(--apple-blue);
+        background: rgba(0, 113, 227, 0.14);
+      }
+      body.theme-light .tab {
+        color: #0066cc;
+        border-color: #0066cc;
+      }
+      body.theme-light .tab.active {
+        color: var(--text-light);
+        border-color: var(--apple-blue);
+        background: var(--apple-blue);
+      }
+
+      body.window-size-min .topbar {
+        height: 42px;
+        padding: 0 10px;
+      }
+      body.window-size-min .toolbar {
+        gap: 6px;
+      }
+      body.window-size-min .title {
+        font-size: 11px;
+      }
+      body.window-size-min .btn {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+      body.window-size-min .bottombar {
+        padding: 10px 10px 10px;
+        gap: 8px;
+      }
+      body.window-size-min .tab {
+        min-width: 78px;
+        height: 28px;
+        font-size: 12px;
+      }
+      body.window-size-min .control-label,
+      body.window-size-min .value,
+      body.window-size-min .hint {
+        font-size: 11px;
+      }
+      body.window-size-min .control-label {
+        width: 106px;
+      }
+      body.window-size-min .preset-btn {
+        height: 24px;
+        padding: 0 10px;
+        font-size: 11px;
+      }
+      body.window-size-min .preset-help,
+      body.window-size-min .diff-count,
+      body.window-size-min .overlay-card {
+        font-size: 10px;
+      }
+      body.window-size-min .preset-help {
+        display: none;
+      }
+      body.window-size-min .hint {
+        display: none;
+      }
+      body.window-size-mini .app {
+        display: none;
+      }
+      .mini-floating-bar {
+        display: none;
+        width: 100%;
+        height: 100%;
+        padding: 6px;
+        align-items: flex-start;
+        justify-content: flex-start;
+        background: radial-gradient(circle at top, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.96) 55%);
+        overflow: hidden;
+        position: relative;
+      }
+      body.window-size-mini .mini-floating-bar {
+        display: flex;
+      }
+      .mini-floating-inner {
+        position: absolute;
+        left: 6px;
+        top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line-dark);
+        background: linear-gradient(180deg, rgba(36, 36, 40, 0.94), rgba(18, 18, 22, 0.94));
+        backdrop-filter: saturate(180%) blur(12px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        cursor: grab;
+        user-select: none;
+        touch-action: none;
+        transition: box-shadow 140ms ease, transform 120ms ease;
+      }
+      .mini-floating-inner.dragging {
+        cursor: grabbing;
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        transform: scale(1.01);
+      }
+      .mini-label {
+        color: var(--text-secondary);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 10px;
+        line-height: 1.33;
+        letter-spacing: -0.08px;
+        padding: 0 1px;
+      }
+      .mini-restore-btn {
+        height: 24px;
+        min-width: 40px;
+        padding: 0 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line-dark);
+        background: var(--surface-dark-1);
+        color: var(--text-light);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .mini-restore-btn:hover {
+        background: var(--surface-dark-2);
+      }
+      .mini-restore-btn:focus-visible {
+        outline: 2px solid var(--apple-blue);
+        outline-offset: 1px;
+      }
+
+      .app.is-theme-switching .stage-wrap,
+      .app.is-theme-switching .bottombar {
+        opacity: 0.86;
+        filter: blur(2px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="title">Frame Visual Compare (Offline)</div>
+        <div class="toolbar">
+          <button id="windowSizeMiniBtn" class="btn size-mode-btn" data-size-mode="mini">플로팅</button>
+          <button id="windowSizeMinBtn" class="btn size-mode-btn" data-size-mode="min">최소</button>
+          <button id="windowSizeDefaultBtn" class="btn size-mode-btn" data-size-mode="default">기본</button>
+          <button id="windowSizeMaxBtn" class="btn size-mode-btn" data-size-mode="max">최대</button>
+          <button id="zoomOutBtn" class="btn">-</button>
+          <button id="zoomInBtn" class="btn">+</button>
+          <button id="swapBtn" class="btn primary">A/B Swap</button>
+          <button id="refreshBtn" class="btn">새로고침</button>
+        </div>
+      </header>
+      <main class="stage-wrap">
+        <canvas id="compareCanvas"></canvas>
+        <div id="emptyOverlay" class="overlay show"><div class="overlay-card">Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요.</div></div>
+        <div id="loadingOverlay" class="overlay"><div class="overlay-card loading"><div class="spinner"></div><div>분석 중...</div></div></div>
+        <div id="errorOverlay" class="overlay"><div id="errorText" class="overlay-card error-text"></div></div>
+      </main>
+      <footer class="bottombar">
+        <div class="tabs">
+          <button class="tab active" data-tab="opacity">Opacity</button>
+          <button class="tab" data-tab="swipe">Swipe</button>
+          <button class="tab" data-tab="pixel">Pixel Diff</button>
+        </div>
+        <div class="controls">
+          <div id="opacityLabel" class="control-label">전경(B) 투명도</div>
+          <input id="opacityRange" class="range" type="range" min="0" max="100" value="60" />
+          <div id="opacityValue" class="value">60%</div>
+        </div>
+        <div id="pixelControls" class="controls" style="display:none;">
+          <div class="control-label">픽셀 민감도</div>
+          <input id="diffThresholdRange" class="range" type="range" min="10" max="120" value="42" />
+          <div id="diffThresholdValue" class="value">42</div>
+        </div>
+        <div id="pixelControls2" class="controls" style="display:none;">
+          <div class="control-label">최소 영역</div>
+          <input id="diffMinAreaRange" class="range" type="range" min="4" max="200" value="20" />
+          <div id="diffMinAreaValue" class="value">20</div>
+        </div>
+        <div id="pixelPresets" class="controls" style="display:none;">
+          <div class="control-label">프리셋</div>
+          <div class="preset-row">
+            <button class="preset-btn" data-preset="precise" data-tooltip="작은 변화까지 탐지합니다. 검출 수가 많아질 수 있습니다." aria-label="정밀 프리셋 설명">정밀</button>
+            <button class="preset-btn active" data-preset="normal" data-tooltip="일반적인 비교에 적합한 균형 설정입니다." aria-label="기본 프리셋 설명">기본</button>
+            <button class="preset-btn" data-preset="relaxed" data-tooltip="큰 변화 위주로 탐지합니다. 노이즈를 줄일 때 유용합니다." aria-label="관대 프리셋 설명">관대</button>
+            <span class="preset-help">정밀: 민감 · 기본: 균형 · 관대: 노이즈 억제</span>
+            <span id="diffCountText" class="diff-count">Diff 0개</span>
+          </div>
+        </div>
+        <div id="tabHint" class="hint">마우스 휠/+/−: 줌, 드래그: 패닝</div>
+      </footer>
+    </div>
+    <div id="miniFloatingBar" class="mini-floating-bar">
+      <div id="miniFloatingInner" class="mini-floating-inner">
+        <span class="mini-label">빠른 전환</span>
+        <button class="mini-restore-btn" data-size-mode="min">최소</button>
+        <button class="mini-restore-btn" data-size-mode="default">기본</button>
+        <button class="mini-restore-btn" data-size-mode="max">최대</button>
+      </div>
+    </div>
+    <script>
+      (() => {
+        const app = document.querySelector(".app");
+        const miniFloatingBar = document.getElementById("miniFloatingBar");
+        const miniFloatingInner = document.getElementById("miniFloatingInner");
+        const canvas = document.getElementById("compareCanvas");
+        const ctx = canvas.getContext("2d");
+        const emptyOverlay = document.getElementById("emptyOverlay");
+        const loadingOverlay = document.getElementById("loadingOverlay");
+        const errorOverlay = document.getElementById("errorOverlay");
+        const errorText = document.getElementById("errorText");
+        const opacityRange = document.getElementById("opacityRange");
+        const opacityValue = document.getElementById("opacityValue");
+        const opacityLabel = document.getElementById("opacityLabel");
+        const pixelControls = document.getElementById("pixelControls");
+        const pixelControls2 = document.getElementById("pixelControls2");
+        const pixelPresets = document.getElementById("pixelPresets");
+        const diffCountText = document.getElementById("diffCountText");
+        const diffThresholdRange = document.getElementById("diffThresholdRange");
+        const diffThresholdValue = document.getElementById("diffThresholdValue");
+        const diffMinAreaRange = document.getElementById("diffMinAreaRange");
+        const diffMinAreaValue = document.getElementById("diffMinAreaValue");
+        const presetButtons = Array.from(document.querySelectorAll(".preset-btn"));
+        const tabHint = document.getElementById("tabHint");
+        const refreshBtn = document.getElementById("refreshBtn");
+        const swapBtn = document.getElementById("swapBtn");
+        const sizeModeButtons = Array.from(document.querySelectorAll(".size-mode-btn"));
+        const miniRestoreButtons = Array.from(document.querySelectorAll(".mini-restore-btn"));
+        const zoomInBtn = document.getElementById("zoomInBtn");
+        const zoomOutBtn = document.getElementById("zoomOutBtn");
+        const tabs = Array.from(document.querySelectorAll(".tab"));
+        const DPR = Math.max(1, window.devicePixelRatio || 1);
+
+        let activeTab = "opacity";
+        let imgA = null; let imgB = null;
+        let urlA = ""; let urlB = "";
+        let hasTwoFrames = false;
+        let zoom = 1; let panX = 0; let panY = 0; let baseFitZoom = 1;
+        let pixelZoom = 1; let pixelPanX = 0; let pixelPanY = 0; let pixelBaseFitZoom = 1;
+        let isDragging = false; let isSwipeHandleDragging = false;
+        let dragStartX = 0; let dragStartY = 0; let startPanX = 0; let startPanY = 0;
+        let swipeRatio = 0.5;
+        let diffRects = [];
+        let diffThreshold = Number(diffThresholdRange.value);
+        let diffMinArea = Number(diffMinAreaRange.value);
+        let themeSwitchTimer = null;
+        let activePreset = "normal";
+        let windowSizeMode = "default";
+        let isMiniDragging = false;
+        let miniDragOffsetX = 0;
+        let miniDragOffsetY = 0;
+        let miniPosX = 8;
+        let miniPosY = 8;
+
+        function clamp(value, min, max) {
+          return Math.max(min, Math.min(max, value));
+        }
+        function placeMiniFloatingInner(x, y) {
+          if (!miniFloatingBar || !miniFloatingInner) return;
+          const barRect = miniFloatingBar.getBoundingClientRect();
+          const innerRect = miniFloatingInner.getBoundingClientRect();
+          const maxX = Math.max(6, barRect.width - innerRect.width - 6);
+          const maxY = Math.max(6, barRect.height - innerRect.height - 6);
+          miniPosX = clamp(x, 6, maxX);
+          miniPosY = clamp(y, 6, maxY);
+          miniFloatingInner.style.left = miniPosX + "px";
+          miniFloatingInner.style.top = miniPosY + "px";
+        }
+        function resetMiniFloatingPosition() {
+          if (!miniFloatingBar || !miniFloatingInner) return;
+          const barRect = miniFloatingBar.getBoundingClientRect();
+          const innerRect = miniFloatingInner.getBoundingClientRect();
+          const centeredX = Math.max(6, (barRect.width - innerRect.width) / 2);
+          const centeredY = Math.max(6, (barRect.height - innerRect.height) / 2);
+          placeMiniFloatingInner(centeredX, centeredY);
+        }
+
+        function postToPlugin(payload) { parent.postMessage({ pluginMessage: payload }, "*"); }
+        function revokeUrls() { if (urlA) URL.revokeObjectURL(urlA); if (urlB) URL.revokeObjectURL(urlB); urlA = ""; urlB = ""; }
+        function showOnly(target) { [emptyOverlay, loadingOverlay, errorOverlay].forEach((el) => el.classList.remove("show")); if (target) target.classList.add("show"); }
+        function setError(message) { errorText.textContent = message; showOnly(errorOverlay); }
+
+        function resetEmptyMessage(text) { emptyOverlay.querySelector(".overlay-card").textContent = text; }
+        function getOpacityLabelText() {
+          const isMin = windowSizeMode === "min";
+          if (activeTab === "pixel") return isMin ? "박스 투명도" : "Diff 박스 투명도";
+          return isMin ? "B 투명도" : "전경(B) 투명도";
+        }
+        function getTabHintText() {
+          const isMin = windowSizeMode === "min";
+          if (activeTab === "swipe") {
+            return isMin ? "휠: 줌, 드래그: 이동" : "핸들 드래그: 스와이프, 마우스 휠/+/−: 줌, 드래그: 패닝";
+          }
+          if (activeTab === "pixel") {
+            return isMin ? "휠: 줌, 드래그: 이동" : "A/B 픽셀 차이 영역을 빨간 박스로 표시합니다. 마우스 휠/+/−: 줌, 드래그: 패닝";
+          }
+          return isMin ? "휠: 줌, 드래그: 이동" : "마우스 휠/+/−: 줌, 드래그: 패닝";
+        }
+        function applyCompactUiCopy() {
+          const isMin = windowSizeMode === "min";
+          swapBtn.textContent = isMin ? "Swap" : "A/B Swap";
+          refreshBtn.textContent = isMin ? "새로" : "새로고침";
+          tabs.forEach((tabBtn) => {
+            if (tabBtn.dataset.tab === "opacity") tabBtn.textContent = isMin ? "Op" : "Opacity";
+            if (tabBtn.dataset.tab === "swipe") tabBtn.textContent = isMin ? "Sw" : "Swipe";
+            if (tabBtn.dataset.tab === "pixel") tabBtn.textContent = isMin ? "Diff" : "Pixel Diff";
+          });
+          opacityLabel.textContent = getOpacityLabelText();
+          tabHint.textContent = getTabHintText();
+        }
+        function updateWindowSizeModeUi() {
+          sizeModeButtons.forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.sizeMode === windowSizeMode);
+          });
+          document.body.classList.toggle("window-size-min", windowSizeMode === "min");
+          document.body.classList.toggle("window-size-mini", windowSizeMode === "mini");
+          if (miniFloatingBar) {
+            miniFloatingBar.setAttribute("aria-hidden", windowSizeMode === "mini" ? "false" : "true");
+          }
+          if (windowSizeMode === "mini") {
+            requestAnimationFrame(() => {
+              resetMiniFloatingPosition();
+            });
+          }
+          applyCompactUiCopy();
+        }
+        function setVisualThemeByTab(tabName) {
+          const isLight = false;
+          if (themeSwitchTimer) clearTimeout(themeSwitchTimer);
+          app.classList.add("is-theme-switching");
+          document.body.classList.toggle("theme-light", isLight);
+          themeSwitchTimer = setTimeout(() => {
+            app.classList.remove("is-theme-switching");
+          }, 180);
+        }
+        function drawChecker() {
+          const w = canvas.width / DPR, h = canvas.height / DPR, s = 16;
+          const darkA = "#242424", darkB = "#1c1c1c";
+          const lightA = "#f0f0f3", lightB = "#e7e7ec";
+          const useLight = document.body.classList.contains("theme-light");
+          const c1 = useLight ? lightA : darkA;
+          const c2 = useLight ? lightB : darkB;
+          for (let y = 0; y < h; y += s) for (let x = 0; x < w; x += s) { ctx.fillStyle = (((x / s) ^ (y / s)) & 1) ? c1 : c2; ctx.fillRect(x, y, s, s); }
+        }
+        function getDrawRect() {
+          const w = canvas.width / DPR, h = canvas.height / DPR;
+          const dw = imgA.width * zoom, dh = imgA.height * zoom;
+          const x = (w - dw) / 2 + panX, y = (h - dh) / 2 + panY;
+          return { x, y, dw, dh, w, h };
+        }
+        function getSwipeX(drawRect) {
+          return drawRect.x + drawRect.dw * swipeRatio;
+        }
+        function drawSwipeHandle(drawRect) {
+          const handleX = getSwipeX(drawRect);
+          const top = drawRect.y;
+          const bottom = drawRect.y + drawRect.dh;
+          ctx.save();
+          ctx.strokeStyle = "#0071e3";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(handleX, top);
+          ctx.lineTo(handleX, bottom);
+          ctx.stroke();
+          const r = 9;
+          ctx.fillStyle = "#0d99ff";
+          ctx.beginPath();
+          ctx.arc(handleX, (top + bottom) / 2, r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.moveTo(handleX - 3, (top + bottom) / 2);
+          ctx.lineTo(handleX - 1, (top + bottom) / 2 - 2);
+          ctx.lineTo(handleX - 1, (top + bottom) / 2 + 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(handleX + 3, (top + bottom) / 2);
+          ctx.lineTo(handleX + 1, (top + bottom) / 2 - 2);
+          ctx.lineTo(handleX + 1, (top + bottom) / 2 + 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        function buildDiffRects(imageA, imageB) {
+          const targetW = 320;
+          const scale = Math.max(1, Math.ceil(Math.max(imageA.width, imageB.width) / targetW));
+          const w = Math.max(1, Math.floor(Math.min(imageA.width, imageB.width) / scale));
+          const h = Math.max(1, Math.floor(Math.min(imageA.height, imageB.height) / scale));
+          const c1 = document.createElement("canvas");
+          const c2 = document.createElement("canvas");
+          c1.width = w; c1.height = h; c2.width = w; c2.height = h;
+          const x1 = c1.getContext("2d", { willReadFrequently: true });
+          const x2 = c2.getContext("2d", { willReadFrequently: true });
+          x1.drawImage(imageA, 0, 0, w, h);
+          x2.drawImage(imageB, 0, 0, w, h);
+          const d1 = x1.getImageData(0, 0, w, h).data;
+          const d2 = x2.getImageData(0, 0, w, h).data;
+          const mask = new Uint8Array(w * h);
+          const threshold = diffThreshold;
+          for (let i = 0, p = 0; i < d1.length; i += 4, p += 1) {
+            const dr = Math.abs(d1[i] - d2[i]);
+            const dg = Math.abs(d1[i + 1] - d2[i + 1]);
+            const db = Math.abs(d1[i + 2] - d2[i + 2]);
+            const da = Math.abs(d1[i + 3] - d2[i + 3]);
+            const diff = dr + dg + db + da * 0.6;
+            mask[p] = diff >= threshold ? 1 : 0;
+          }
+          const visited = new Uint8Array(w * h);
+          const rects = [];
+          const minArea = diffMinArea;
+          const maxRects = 120;
+          const queueX = new Int32Array(w * h);
+          const queueY = new Int32Array(w * h);
+          const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+          for (let y = 0; y < h; y += 1) {
+            for (let x = 0; x < w; x += 1) {
+              const idx = y * w + x;
+              if (!mask[idx] || visited[idx]) continue;
+              let head = 0, tail = 0;
+              queueX[tail] = x; queueY[tail] = y; tail += 1;
+              visited[idx] = 1;
+              let minX = x, minY = y, maxX = x, maxY = y, count = 0;
+              while (head < tail) {
+                const cx = queueX[head], cy = queueY[head]; head += 1;
+                count += 1;
+                if (cx < minX) minX = cx; if (cx > maxX) maxX = cx;
+                if (cy < minY) minY = cy; if (cy > maxY) maxY = cy;
+                for (let d = 0; d < dirs.length; d += 1) {
+                  const nx = cx + dirs[d][0], ny = cy + dirs[d][1];
+                  if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                  const nIdx = ny * w + nx;
+                  if (!mask[nIdx] || visited[nIdx]) continue;
+                  visited[nIdx] = 1;
+                  queueX[tail] = nx; queueY[tail] = ny; tail += 1;
+                }
+              }
+              if (count < minArea) continue;
+              rects.push({
+                x: minX / w,
+                y: minY / h,
+                w: (maxX - minX + 1) / w,
+                h: (maxY - minY + 1) / h
+              });
+              if (rects.length >= maxRects) return rects;
+            }
+          }
+          return rects;
+        }
+        function drawDiffRectangles(baseX, baseY, drawW, drawH, rects) {
+          const boxOpacityRatio = Number(opacityRange.value) / 100;
+          const strokeAlpha = 0.35 + boxOpacityRatio * 0.65;
+          const fillAlpha = 0.06 + boxOpacityRatio * 0.56;
+
+          ctx.save();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "rgba(255, 59, 48, " + strokeAlpha.toFixed(3) + ")";
+          ctx.fillStyle = "rgba(255, 59, 48, " + fillAlpha.toFixed(3) + ")";
+          for (let i = 0; i < rects.length; i += 1) {
+            const r = rects[i];
+            const x = baseX + r.x * drawW;
+            const y = baseY + r.y * drawH;
+            const w = r.w * drawW;
+            const h = r.h * drawH;
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeRect(x, y, w, h);
+          }
+          ctx.restore();
+        }
+        function drawPixelDiff() {
+          const w = canvas.width / DPR, h = canvas.height / DPR;
+          const margin = 20;
+          const gap = 16;
+          const basePaneW = Math.max(20, (w - margin * 2 - gap) / 2);
+          const basePaneH = Math.max(20, h - margin * 2);
+          const paneW = basePaneW * pixelZoom;
+          const paneH = basePaneH * pixelZoom;
+          const leftPaneX = margin + pixelPanX - (paneW - basePaneW) / 2;
+          const paneY = margin + pixelPanY - (paneH - basePaneH) / 2;
+          const rightPaneX = leftPaneX + paneW + gap;
+          const ratio = Math.min(paneW / imgA.width, paneH / imgA.height);
+          const drawW = imgA.width * ratio;
+          const drawH = imgA.height * ratio;
+          const leftX = leftPaneX + (paneW - drawW) / 2;
+          const rightX = rightPaneX + (paneW - drawW) / 2;
+          const y = paneY + (paneH - drawH) / 2;
+
+          const isLight = document.body.classList.contains("theme-light");
+          ctx.fillStyle = isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.06)";
+          ctx.fillRect(leftPaneX, paneY, paneW, paneH);
+          ctx.fillRect(rightPaneX, paneY, paneW, paneH);
+
+          ctx.drawImage(imgA, leftX, y, drawW, drawH);
+          ctx.drawImage(imgB, rightX, y, drawW, drawH);
+
+          drawDiffRectangles(leftX, y, drawW, drawH, diffRects);
+          drawDiffRectangles(rightX, y, drawW, drawH, diffRects);
+
+          ctx.fillStyle = isLight ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.92)";
+          ctx.font = "12px Inter, sans-serif";
+          ctx.fillText("A", leftX + 6, y + 16);
+          ctx.fillText("B", rightX + 6, y + 16);
+        }
+        function updateDiffCountText() {
+          diffCountText.textContent = "Diff " + diffRects.length + "개";
+        }
+        function recomputeDiffRects() {
+          if (!imgA || !imgB) return;
+          diffRects = buildDiffRects(imgA, imgB);
+          updateDiffCountText();
+        }
+        function applyPreset(presetName) {
+          const presetMap = {
+            precise: { threshold: 28, minArea: 10 },
+            normal: { threshold: 42, minArea: 20 },
+            relaxed: { threshold: 64, minArea: 36 }
+          };
+          const preset = presetMap[presetName];
+          if (!preset) return;
+
+          activePreset = presetName;
+          diffThreshold = preset.threshold;
+          diffMinArea = preset.minArea;
+          diffThresholdRange.value = String(diffThreshold);
+          diffMinAreaRange.value = String(diffMinArea);
+          diffThresholdValue.textContent = String(diffThreshold);
+          diffMinAreaValue.textContent = String(diffMinArea);
+          presetButtons.forEach((btn) => {
+            btn.classList.toggle("active", btn.dataset.preset === activePreset);
+          });
+          recomputeDiffRects();
+          if (activeTab === "pixel") draw();
+        }
+        function clearPresetSelection() {
+          activePreset = "";
+          presetButtons.forEach((btn) => btn.classList.remove("active"));
+        }
+        function draw() {
+          const w = canvas.width / DPR, h = canvas.height / DPR;
+          ctx.clearRect(0, 0, w, h); drawChecker();
+          if (!imgA || !imgB) return;
+
+          if (activeTab === "opacity") {
+            const rect = getDrawRect();
+            ctx.globalAlpha = 1;
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(imgA, rect.x, rect.y, rect.dw, rect.dh);
+            ctx.globalAlpha = Number(opacityRange.value) / 100;
+            ctx.drawImage(imgB, rect.x, rect.y, rect.dw, rect.dh);
+            ctx.globalAlpha = 1;
+            return;
+          }
+          if (activeTab === "swipe") {
+            const rect = getDrawRect();
+            ctx.globalAlpha = 1;
+            ctx.imageSmoothingEnabled = true;
+            ctx.drawImage(imgA, rect.x, rect.y, rect.dw, rect.dh);
+            const swipeX = getSwipeX(rect);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(rect.x, rect.y, Math.max(0, swipeX - rect.x), rect.dh);
+            ctx.clip();
+            ctx.globalAlpha = 1;
+            ctx.drawImage(imgB, rect.x, rect.y, rect.dw, rect.dh);
+            ctx.restore();
+            drawSwipeHandle(rect);
+            return;
+          }
+          if (activeTab === "pixel") {
+            drawPixelDiff();
+          }
+        }
+        function resizeCanvas() {
+          const rect = canvas.getBoundingClientRect();
+          canvas.width = Math.max(1, Math.round(rect.width * DPR)); canvas.height = Math.max(1, Math.round(rect.height * DPR));
+          ctx.setTransform(DPR, 0, 0, DPR, 0, 0); draw();
+        }
+        function resetView() {
+          if (!imgA || !imgB) return;
+          const iw = Math.max(imgA.width, imgB.width), ih = Math.max(imgA.height, imgB.height);
+          const vw = canvas.width / DPR, vh = canvas.height / DPR;
+          baseFitZoom = Math.min(vw / iw, vh / ih); if (!Number.isFinite(baseFitZoom) || baseFitZoom <= 0) baseFitZoom = 1;
+          zoom = baseFitZoom; panX = 0; panY = 0;
+          pixelBaseFitZoom = 1;
+          pixelZoom = 1;
+          pixelPanX = 0;
+          pixelPanY = 0;
+        }
+        function zoomBy(delta, cx, cy) {
+          if (!imgA || !imgB) return;
+          const w = canvas.width / DPR, h = canvas.height / DPR, centerX = Number.isFinite(cx) ? cx : w / 2, centerY = Number.isFinite(cy) ? cy : h / 2;
+          if (activeTab === "opacity" || activeTab === "swipe") {
+            const oldZoom = zoom, nextZoom = Math.min(baseFitZoom * 12, Math.max(baseFitZoom * 0.25, zoom * delta));
+            if (nextZoom === oldZoom) return;
+            const oldW = imgA.width * oldZoom, oldH = imgA.height * oldZoom;
+            const oldX = (w - oldW) / 2 + panX, oldY = (h - oldH) / 2 + panY;
+            const nx = (centerX - oldX) / oldZoom, ny = (centerY - oldY) / oldZoom;
+            zoom = nextZoom;
+            const newW = imgA.width * zoom, newH = imgA.height * zoom;
+            const newX = centerX - nx * zoom, newY = centerY - ny * zoom;
+            panX = newX - (w - newW) / 2; panY = newY - (h - newH) / 2; draw();
+            return;
+          }
+          if (activeTab === "pixel") {
+            const oldZoom = pixelZoom, nextZoom = Math.min(pixelBaseFitZoom * 8, Math.max(pixelBaseFitZoom * 0.5, pixelZoom * delta));
+            if (nextZoom === oldZoom) return;
+            const oldX = pixelPanX;
+            const oldY = pixelPanY;
+            pixelZoom = nextZoom;
+            pixelPanX = centerX - (centerX - oldX) * (nextZoom / oldZoom);
+            pixelPanY = centerY - (centerY - oldY) * (nextZoom / oldZoom);
+            draw();
+          }
+        }
+        async function bytesToImage(bytes, label) {
+          if (!(bytes instanceof Uint8Array)) throw new Error(label + " 이미지 데이터 형식이 올바르지 않습니다.");
+          const blob = new Blob([bytes], { type: "image/png" }), url = URL.createObjectURL(blob);
+          const image = await new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => reject(new Error(label + " 이미지 로드에 실패했습니다.")); img.src = url; });
+          return { image, url };
+        }
+        async function applyFrameData(payload) {
+          showOnly(loadingOverlay);
+          try {
+            revokeUrls();
+            const [a, b] = await Promise.all([bytesToImage(payload.a.bytes, "A"), bytesToImage(payload.b.bytes, "B")]);
+            imgA = a.image; imgB = b.image; urlA = a.url; urlB = b.url; hasTwoFrames = true;
+            diffRects = buildDiffRects(imgA, imgB);
+            updateDiffCountText();
+            resetView(); showOnly(activeTab === "pixel" ? emptyOverlay : null); draw();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "이미지 처리 중 오류가 발생했습니다.");
+          }
+        }
+
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", () => {
+            tabs.forEach((el) => el.classList.remove("active")); tab.classList.add("active");
+            activeTab = tab.dataset.tab || "opacity";
+            setVisualThemeByTab(activeTab);
+            if (activeTab === "opacity") {
+              pixelControls.style.display = "none";
+              pixelControls2.style.display = "none";
+              pixelPresets.style.display = "none";
+              opacityLabel.textContent = "전경(B) 투명도";
+              tabHint.textContent = "마우스 휠/+/−: 줌, 드래그: 패닝";
+              if (hasTwoFrames && imgA && imgB) showOnly(null); else { resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay); }
+              draw();
+            } else if (activeTab === "swipe") {
+              pixelControls.style.display = "none";
+              pixelControls2.style.display = "none";
+              pixelPresets.style.display = "none";
+              opacityLabel.textContent = "전경(B) 투명도";
+              tabHint.textContent = "핸들 드래그: 스와이프, 마우스 휠/+/−: 줌, 드래그: 패닝";
+              if (hasTwoFrames && imgA && imgB) showOnly(null); else { resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay); }
+              draw();
+            } else {
+              pixelControls.style.display = "flex";
+              pixelControls2.style.display = "flex";
+              pixelPresets.style.display = "flex";
+              opacityLabel.textContent = "Diff 박스 투명도";
+              tabHint.textContent = "A/B 픽셀 차이 영역을 빨간 박스로 표시합니다. 마우스 휠/+/−: 줌, 드래그: 패닝";
+              if (hasTwoFrames && imgA && imgB) showOnly(null); else { resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay); }
+              draw();
+            }
+            applyCompactUiCopy();
+          });
+        });
+
+        opacityRange.addEventListener("input", () => { opacityValue.textContent = opacityRange.value + "%"; draw(); });
+        diffThresholdRange.addEventListener("input", () => {
+          clearPresetSelection();
+          diffThreshold = Number(diffThresholdRange.value);
+          diffThresholdValue.textContent = String(diffThreshold);
+          recomputeDiffRects();
+          if (activeTab === "pixel") draw();
+        });
+        diffMinAreaRange.addEventListener("input", () => {
+          clearPresetSelection();
+          diffMinArea = Number(diffMinAreaRange.value);
+          diffMinAreaValue.textContent = String(diffMinArea);
+          recomputeDiffRects();
+          if (activeTab === "pixel") draw();
+        });
+        presetButtons.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const presetName = btn.dataset.preset;
+            if (!presetName) return;
+            applyPreset(presetName);
+          });
+        });
+        swapBtn.addEventListener("click", () => {
+          if (!imgA || !imgB) return;
+          const ti = imgA; imgA = imgB; imgB = ti;
+          const tu = urlA; urlA = urlB; urlB = tu;
+          recomputeDiffRects();
+          draw();
+        });
+        refreshBtn.addEventListener("click", () => postToPlugin({ type: "request-refresh" }));
+        sizeModeButtons.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const mode = btn.dataset.sizeMode;
+            if (!mode) return;
+            postToPlugin({ type: "set-window-size-mode", mode });
+          });
+        });
+        miniRestoreButtons.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const mode = btn.dataset.sizeMode;
+            if (!mode) return;
+            postToPlugin({ type: "set-window-size-mode", mode });
+          });
+        });
+        if (miniFloatingInner) {
+          miniFloatingInner.addEventListener("pointerdown", (e) => {
+            if (e.target instanceof HTMLElement && e.target.closest(".mini-restore-btn")) return;
+            if (!miniFloatingBar) return;
+            isMiniDragging = true;
+            const innerRect = miniFloatingInner.getBoundingClientRect();
+            miniDragOffsetX = e.clientX - innerRect.left;
+            miniDragOffsetY = e.clientY - innerRect.top;
+            miniFloatingInner.classList.add("dragging");
+            miniFloatingInner.setPointerCapture(e.pointerId);
+          });
+          miniFloatingInner.addEventListener("pointermove", (e) => {
+            if (!isMiniDragging || !miniFloatingBar) return;
+            const barRect = miniFloatingBar.getBoundingClientRect();
+            const nextX = e.clientX - barRect.left - miniDragOffsetX;
+            const nextY = e.clientY - barRect.top - miniDragOffsetY;
+            placeMiniFloatingInner(nextX, nextY);
+          });
+          const endMiniDrag = (e) => {
+            if (!isMiniDragging) return;
+            isMiniDragging = false;
+            miniFloatingInner.classList.remove("dragging");
+            try { miniFloatingInner.releasePointerCapture(e.pointerId); } catch (_) {}
+          };
+          miniFloatingInner.addEventListener("pointerup", endMiniDrag);
+          miniFloatingInner.addEventListener("pointercancel", endMiniDrag);
+          miniFloatingInner.addEventListener("lostpointercapture", () => {
+            isMiniDragging = false;
+            miniFloatingInner.classList.remove("dragging");
+          });
+        }
+        window.addEventListener("resize", () => {
+          if (windowSizeMode === "mini") {
+            placeMiniFloatingInner(miniPosX, miniPosY);
+          }
+        });
+        zoomInBtn.addEventListener("click", () => zoomBy(1.15));
+        zoomOutBtn.addEventListener("click", () => zoomBy(1 / 1.15));
+
+        canvas.addEventListener("wheel", (e) => {
+          if (activeTab !== "opacity" && activeTab !== "swipe" && activeTab !== "pixel") return;
+          e.preventDefault();
+          const rect = canvas.getBoundingClientRect();
+          const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+          zoomBy(e.deltaY < 0 ? 1.08 : 1 / 1.08, cx, cy);
+        }, { passive: false });
+
+        canvas.addEventListener("pointerdown", (e) => {
+          if (activeTab !== "opacity" && activeTab !== "swipe" && activeTab !== "pixel") return;
+          if (activeTab === "swipe" && imgA && imgB) {
+            const rect = canvas.getBoundingClientRect();
+            const px = e.clientX - rect.left;
+            const drawRect = getDrawRect();
+            const handleX = getSwipeX(drawRect);
+            const nearHandle = Math.abs(px - handleX) <= 12;
+            if (nearHandle) {
+              isSwipeHandleDragging = true;
+              canvas.classList.add("dragging");
+              canvas.setPointerCapture(e.pointerId);
+              return;
+            }
+          }
+          isDragging = true; dragStartX = e.clientX; dragStartY = e.clientY; startPanX = panX; startPanY = panY;
+          if (activeTab === "pixel") { startPanX = pixelPanX; startPanY = pixelPanY; }
+          canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId);
+        });
+        canvas.addEventListener("pointermove", (e) => {
+          if (isSwipeHandleDragging && activeTab === "swipe" && imgA && imgB) {
+            const rect = canvas.getBoundingClientRect();
+            const px = e.clientX - rect.left;
+            const drawRect = getDrawRect();
+            const nextRatio = (px - drawRect.x) / drawRect.dw;
+            swipeRatio = Math.max(0, Math.min(1, nextRatio));
+            draw();
+            return;
+          }
+          if (!isDragging || (activeTab !== "opacity" && activeTab !== "swipe" && activeTab !== "pixel")) return;
+          if (activeTab === "pixel") {
+            pixelPanX = startPanX + (e.clientX - dragStartX);
+            pixelPanY = startPanY + (e.clientY - dragStartY);
+            draw();
+            return;
+          }
+          panX = startPanX + (e.clientX - dragStartX); panY = startPanY + (e.clientY - dragStartY); draw();
+        });
+        function endDrag(e) {
+          const hadDrag = isDragging || isSwipeHandleDragging;
+          if (!hadDrag) return;
+          isDragging = false;
+          isSwipeHandleDragging = false;
+          canvas.classList.remove("dragging");
+          try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+        }
+        canvas.addEventListener("pointerup", endDrag); canvas.addEventListener("pointercancel", endDrag); canvas.addEventListener("pointerleave", endDrag);
+
+        window.onmessage = (event) => {
+          const msg = event.data && event.data.pluginMessage;
+          if (!msg) return;
+          if (msg.type === "selection-state") {
+            hasTwoFrames = !!msg.ok;
+            if (!msg.ok) {
+              imgA = null; imgB = null; diffRects = [];
+              updateDiffCountText();
+              revokeUrls(); draw(); resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay);
+            }
+          } else if (msg.type === "loading") {
+            showOnly(loadingOverlay);
+          } else if (msg.type === "frame-data") {
+            applyFrameData(msg.payload);
+          } else if (msg.type === "error") {
+            setError(msg.message || "알 수 없는 오류가 발생했습니다.");
+          } else if (msg.type === "window-size-state") {
+            if (typeof msg.mode === "string") {
+              windowSizeMode = msg.mode;
+              updateWindowSizeModeUi();
+            }
+          }
+        };
+
+        new ResizeObserver(resizeCanvas).observe(canvas);
+        setVisualThemeByTab(activeTab);
+        updateWindowSizeModeUi();
+        updateDiffCountText();
+        resizeCanvas();
+        postToPlugin({ type: "request-selection-state" });
+        postToPlugin({ type: "request-window-size-state" });
+        postToPlugin({ type: "request-refresh" });
+        window.addEventListener("beforeunload", revokeUrls);
+      })();
+    </script>
+  </body>
+</html>
