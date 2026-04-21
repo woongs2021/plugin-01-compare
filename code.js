@@ -1,66 +1,128 @@
 const UI_SIZE_BY_MODE = {
+  dock: { width: 28, height: 120 },
   mini: { width: 280, height: 60 },
   min: { width: 600, height: 420 },
   default: { width: 900, height: 700 },
   max: { width: 1600, height: 1100 }
 };
+
 let uiSizeMode = "default";
+let uiDockSide = "";
 const SCREEN_SAFE_MARGIN = 100;
 
 figma.showUI(__html__, UI_SIZE_BY_MODE.default);
-
-function postWindowSizeState() {
-  figma.ui.postMessage({
-    type: "window-size-state",
-    mode: uiSizeMode
-  });
-}
-
-function setWindowSizeMode(mode) {
-  if (!Object.prototype.hasOwnProperty.call(UI_SIZE_BY_MODE, mode)) return;
-  uiSizeMode = mode;
-  const nextSize = UI_SIZE_BY_MODE[mode];
-  figma.ui.resize(nextSize.width, nextSize.height);
-  // 모드 변경 시마다 우측 하단(100px 마진)으로 고정 배치
-  moveUiToSafePosition(nextSize);
-  postWindowSizeState();
-}
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function getSafeUiPosition(size) {
+function postWindowSizeState() {
+  figma.ui.postMessage({
+    type: "window-size-state",
+    mode: uiSizeMode,
+    dockSide: uiDockSide
+  });
+}
+
+function getViewportBounds() {
   const bounds = figma.viewport && figma.viewport.bounds;
-  if (!bounds) return { x: SCREEN_SAFE_MARGIN, y: SCREEN_SAFE_MARGIN };
-  const minX = Math.round(bounds.x + SCREEN_SAFE_MARGIN);
-  const minY = Math.round(bounds.y + SCREEN_SAFE_MARGIN);
-  const preferredX = Math.round(bounds.x + bounds.width - size.width - SCREEN_SAFE_MARGIN);
-  const preferredY = Math.round(bounds.y + bounds.height - size.height - SCREEN_SAFE_MARGIN);
+  return bounds || null;
+}
+
+function getViewportPixelSize() {
+  const bounds = getViewportBounds();
+  const zoom = figma.viewport && typeof figma.viewport.zoom === "number" ? figma.viewport.zoom : 1;
+  if (!bounds) {
+    return { width: 1200, height: 800 };
+  }
+  const width = Math.max(320, Math.round(bounds.width * zoom));
+  const height = Math.max(240, Math.round(bounds.height * zoom));
+  return { width, height };
+}
+
+function getSafeUiPosition(size, dockSide = "") {
+  const viewportSize = getViewportPixelSize();
+  const maxXRaw = viewportSize.width - size.width;
+  const maxYRaw = viewportSize.height - size.height;
+  const maxX = Math.max(0, maxXRaw);
+  const maxY = Math.max(0, maxYRaw);
+
+  if (dockSide === "left" || dockSide === "right") {
+    const x = dockSide === "left" ? 0 : maxX;
+    const y = clamp(Math.round((viewportSize.height - size.height) / 2), 0, maxY);
+    return { x, y };
+  }
+
+  const minX = Math.min(SCREEN_SAFE_MARGIN, maxX);
+  const minY = Math.min(SCREEN_SAFE_MARGIN, maxY);
+  const preferredX = viewportSize.width - size.width - SCREEN_SAFE_MARGIN;
+  const preferredY = viewportSize.height - size.height - SCREEN_SAFE_MARGIN;
 
   return {
-    x: Math.max(minX, preferredX),
-    y: Math.max(minY, preferredY)
+    x: clamp(Math.round(preferredX), minX, maxX),
+    y: clamp(Math.round(preferredY), minY, maxY)
   };
 }
 
-function moveUiToSafePosition(size) {
+function moveUiToSafePosition(size, dockSide = "") {
   const uiWithMove = figma.ui;
   if (!uiWithMove || typeof uiWithMove.move !== "function") return;
-  const target = getSafeUiPosition(size);
+  const target = getSafeUiPosition(size, dockSide);
 
   const attemptMove = () => {
     try {
       uiWithMove.move(target.x, target.y);
     } catch (_) {
-      // move 미지원/실패 환경은 resize만 유지
+      // 일부 환경에서는 move 미지원
     }
   };
 
   attemptMove();
-  // 일부 환경에서 resize 직후 move가 무시될 수 있어 짧게 재시도
   setTimeout(attemptMove, 80);
   setTimeout(attemptMove, 180);
+}
+
+function resolveWindowPlacement(requestedMode) {
+  const requestedSize = UI_SIZE_BY_MODE[requestedMode];
+  const viewportSize = getViewportPixelSize();
+
+  if (requestedMode === "mini" || requestedMode === "dock" || requestedMode === "max") {
+    return {
+      mode: requestedMode,
+      size: requestedSize,
+      dockSide: requestedMode === "dock" ? uiDockSide || "right" : ""
+    };
+  }
+
+  // 일반 컨테이너가 좌/우 스크린 한계에 닿으면 dock 모드로 전환
+  const horizontalRoom = viewportSize.width - requestedSize.width - SCREEN_SAFE_MARGIN * 2;
+  if (horizontalRoom < 0) {
+    const dockSide = uiDockSide === "left" || uiDockSide === "right" ? uiDockSide : "right";
+    return {
+      mode: "dock",
+      size: UI_SIZE_BY_MODE.dock,
+      dockSide
+    };
+  }
+
+  return {
+    mode: requestedMode,
+    size: requestedSize,
+    dockSide: ""
+  };
+}
+
+function setWindowSizeMode(mode) {
+  if (!Object.prototype.hasOwnProperty.call(UI_SIZE_BY_MODE, mode)) return;
+
+  const resolved = resolveWindowPlacement(mode);
+  uiSizeMode = resolved.mode;
+  uiDockSide = resolved.dockSide;
+  const nextSize = resolved.size;
+
+  figma.ui.resize(nextSize.width, nextSize.height);
+  moveUiToSafePosition(nextSize, uiDockSide);
+  postWindowSizeState();
 }
 
 function getSelectedFrames() {
@@ -141,9 +203,6 @@ figma.ui.onmessage = async (msg) => {
     case "request-selection-state":
       postSelectionState();
       break;
-    case "toggle-window-size":
-      setWindowSizeMode(uiSizeMode === "max" ? "default" : "max");
-      break;
     case "set-window-size-mode":
       if (typeof msg.mode === "string") {
         setWindowSizeMode(msg.mode);
@@ -160,3 +219,4 @@ figma.ui.onmessage = async (msg) => {
 postSelectionState();
 sendFrameData();
 postWindowSizeState();
+
