@@ -19,6 +19,8 @@
         --surface-dark-2: #262628;
         --overlay: rgba(210, 210, 215, 0.64);
         --danger: #ff4d4f;
+        --container-radius-default: 18px;
+        --container-radius-min: 16px;
       }
       * { box-sizing:border-box; }
       html, body {
@@ -35,6 +37,8 @@
         height:100%;
         display:flex;
         flex-direction:column;
+        border-radius:var(--container-radius-default);
+        overflow:hidden;
         transition: background-color 180ms ease, color 180ms ease;
       }
       .topbar {
@@ -47,6 +51,8 @@
         border-bottom:1px solid var(--line-dark);
         background:rgba(0, 0, 0, 0.8);
         backdrop-filter:saturate(180%) blur(20px);
+        border-top-left-radius:var(--container-radius-default);
+        border-top-right-radius:var(--container-radius-default);
       }
       .title {
         font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
@@ -59,7 +65,7 @@
       .toolbar { display:flex; align-items:center; gap:8px; }
       .btn {
         height:32px;
-        border-radius:8px;
+        border-radius:10px;
         border:1px solid transparent;
         background:var(--surface-dark-1);
         color:var(--text-light);
@@ -99,7 +105,7 @@
       .overlay-card {
         background:rgba(0, 0, 0, 0.82);
         border:1px solid var(--line-dark);
-        border-radius:12px;
+        border-radius:14px;
         padding:18px 20px;
         max-width:560px;
         color:var(--text-secondary);
@@ -117,6 +123,8 @@
         display:flex;
         flex-direction:column;
         gap:10px;
+        border-bottom-left-radius:20px;
+        border-bottom-right-radius:20px;
         transition: background-color 180ms ease, color 180ms ease, opacity 180ms ease, filter 180ms ease;
       }
       .tabs { display:flex; gap:8px; }
@@ -228,7 +236,7 @@
         min-width: 180px;
         max-width: 240px;
         padding: 7px 10px;
-        border-radius: 8px;
+        border-radius: 10px;
         border: 1px solid rgba(255, 255, 255, 0.16);
         background: rgba(28, 28, 30, 0.95);
         color: rgba(255, 255, 255, 0.92);
@@ -361,6 +369,8 @@
       body.window-size-min .topbar {
         height: 42px;
         padding: 0 10px;
+        border-top-left-radius: var(--container-radius-min);
+        border-top-right-radius: var(--container-radius-min);
       }
       body.window-size-min .toolbar {
         gap: 6px;
@@ -376,6 +386,11 @@
       body.window-size-min .bottombar {
         padding: 10px 10px 10px;
         gap: 8px;
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
+      }
+      body.window-size-min .app {
+        border-radius: var(--container-radius-min);
       }
       body.window-size-min .tab {
         min-width: 78px;
@@ -423,6 +438,9 @@
       body.window-size-mini .mini-floating-bar {
         display: flex;
       }
+      body.window-size-dock .mini-floating-bar {
+        display: flex;
+      }
       .mini-floating-inner {
         position: absolute;
         left: 6px;
@@ -445,6 +463,76 @@
         cursor: grabbing;
         box-shadow: 0 14px 28px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         transform: scale(1.01);
+      }
+      body.window-size-dock .mini-floating-inner {
+        display: none;
+      }
+      body.window-size-dock .app {
+        display: none;
+      }
+      .mini-dock-handle {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 44px;
+        border: 1px solid var(--line-dark);
+        background: linear-gradient(180deg, rgba(36, 36, 40, 0.96), rgba(18, 18, 22, 0.96));
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+      }
+      body.window-size-dock .mini-dock-handle {
+        display: flex;
+      }
+      body.window-size-dock.dock-left .mini-dock-handle {
+        left: 0;
+        border-radius: 0 10px 10px 0;
+        border-left: none;
+      }
+      body.window-size-dock.dock-right .mini-dock-handle {
+        right: 0;
+        border-radius: 10px 0 0 10px;
+        border-right: none;
+      }
+      .mini-dock-handle:hover {
+        color: var(--text-light);
+      }
+      .mini-dock-handle:focus-visible {
+        outline: 2px solid var(--apple-blue);
+        outline-offset: 1px;
+      }
+      .mini-dock-handle::before {
+        content: "❯";
+        font-size: 10px;
+        line-height: 1;
+      }
+      body.window-size-dock.dock-right .mini-dock-handle::before {
+        content: "❮";
+      }
+      .dock-debug-badge {
+        position: absolute;
+        left: 4px;
+        bottom: 4px;
+        display: none;
+        padding: 2px 5px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        background: rgba(0, 0, 0, 0.76);
+        color: rgba(255, 255, 255, 0.92);
+        font-family:"SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
+        font-size: 8px;
+        line-height: 1.2;
+        letter-spacing: -0.06px;
+        pointer-events: none;
+        z-index: 2;
+      }
+      body.window-size-dock .dock-debug-badge {
+        display: block;
       }
       .mini-label {
         color: var(--text-secondary);
@@ -508,7 +596,7 @@
           <button class="tab" data-tab="swipe">Swipe</button>
           <button class="tab" data-tab="pixel">Pixel Diff</button>
         </div>
-        <div class="controls">
+        <div id="opacityControls" class="controls">
           <div id="opacityLabel" class="control-label">전경(B) 투명도</div>
           <input id="opacityRange" class="range" type="range" min="0" max="100" value="60" />
           <div id="opacityValue" class="value">60%</div>
@@ -522,6 +610,11 @@
           <div class="control-label">최소 영역</div>
           <input id="diffMinAreaRange" class="range" type="range" min="4" max="200" value="20" />
           <div id="diffMinAreaValue" class="value">20</div>
+        </div>
+        <div id="pixelOpacityBControls" class="controls" style="display:none;">
+          <div class="control-label">B-only 박스 투명도</div>
+          <input id="opacityRangeB" class="range" type="range" min="0" max="100" value="60" />
+          <div id="opacityValueB" class="value">60%</div>
         </div>
         <div id="pixelPresets" class="controls" style="display:none;">
           <div class="control-label">프리셋</div>
@@ -538,17 +631,20 @@
     </div>
     <div id="miniFloatingBar" class="mini-floating-bar">
       <div id="miniFloatingInner" class="mini-floating-inner">
-        <span class="mini-label">빠른 전환</span>
         <button class="mini-restore-btn" data-size-mode="min">최소</button>
         <button class="mini-restore-btn" data-size-mode="default">기본</button>
         <button class="mini-restore-btn" data-size-mode="max">최대</button>
       </div>
+      <button id="miniDockHandle" class="mini-dock-handle" type="button" aria-label="플로팅 바 펼치기"></button>
+      <div id="dockDebugBadge" class="dock-debug-badge">dock/right</div>
     </div>
     <script>
       (() => {
         const app = document.querySelector(".app");
         const miniFloatingBar = document.getElementById("miniFloatingBar");
         const miniFloatingInner = document.getElementById("miniFloatingInner");
+        const miniDockHandle = document.getElementById("miniDockHandle");
+        const dockDebugBadge = document.getElementById("dockDebugBadge");
         const canvas = document.getElementById("compareCanvas");
         const ctx = canvas.getContext("2d");
         const emptyOverlay = document.getElementById("emptyOverlay");
@@ -558,9 +654,13 @@
         const opacityRange = document.getElementById("opacityRange");
         const opacityValue = document.getElementById("opacityValue");
         const opacityLabel = document.getElementById("opacityLabel");
+        const opacityControls = document.getElementById("opacityControls");
         const pixelControls = document.getElementById("pixelControls");
         const pixelControls2 = document.getElementById("pixelControls2");
+        const pixelOpacityBControls = document.getElementById("pixelOpacityBControls");
         const pixelPresets = document.getElementById("pixelPresets");
+        const opacityRangeB = document.getElementById("opacityRangeB");
+        const opacityValueB = document.getElementById("opacityValueB");
         const diffCountText = document.getElementById("diffCountText");
         const diffThresholdRange = document.getElementById("diffThresholdRange");
         const diffThresholdValue = document.getElementById("diffThresholdValue");
@@ -586,9 +686,12 @@
         let isDragging = false; let isSwipeHandleDragging = false;
         let dragStartX = 0; let dragStartY = 0; let startPanX = 0; let startPanY = 0;
         let swipeRatio = 0.5;
-        let diffRects = [];
+        let diffRectsAOnly = [];
+        let diffRectsBOnly = [];
         let diffThreshold = Number(diffThresholdRange.value);
         let diffMinArea = Number(diffMinAreaRange.value);
+        let directionalAlphaBias = 12;
+        let directionalLumaBias = 10;
         let themeSwitchTimer = null;
         let activePreset = "normal";
         let windowSizeMode = "default";
@@ -597,6 +700,8 @@
         let miniDragOffsetY = 0;
         let miniPosX = 8;
         let miniPosY = 8;
+        let dockSide = "right";
+        let lastNormalMode = "default";
 
         function clamp(value, min, max) {
           return Math.max(min, Math.min(max, value));
@@ -620,6 +725,15 @@
           const centeredY = Math.max(6, (barRect.height - innerRect.height) / 2);
           placeMiniFloatingInner(centeredX, centeredY);
         }
+        function updateDockUi() {
+          document.body.classList.toggle("window-size-dock", windowSizeMode === "dock");
+          document.body.classList.toggle("dock-left", dockSide === "left");
+          document.body.classList.toggle("dock-right", dockSide === "right");
+          if (dockDebugBadge) {
+            const sideText = dockSide === "left" ? "left" : "right";
+            dockDebugBadge.textContent = windowSizeMode === "dock" ? "dock/" + sideText : "";
+          }
+        }
 
         function postToPlugin(payload) { parent.postMessage({ pluginMessage: payload }, "*"); }
         function revokeUrls() { if (urlA) URL.revokeObjectURL(urlA); if (urlB) URL.revokeObjectURL(urlB); urlA = ""; urlB = ""; }
@@ -629,7 +743,7 @@
         function resetEmptyMessage(text) { emptyOverlay.querySelector(".overlay-card").textContent = text; }
         function getOpacityLabelText() {
           const isMin = windowSizeMode === "min";
-          if (activeTab === "pixel") return isMin ? "박스 투명도" : "Diff 박스 투명도";
+          if (activeTab === "pixel") return isMin ? "A 박스 투명도" : "A-only 박스 투명도";
           return isMin ? "B 투명도" : "전경(B) 투명도";
         }
         function getTabHintText() {
@@ -638,7 +752,7 @@
             return isMin ? "휠: 줌, 드래그: 이동" : "핸들 드래그: 스와이프, 마우스 휠/+/−: 줌, 드래그: 패닝";
           }
           if (activeTab === "pixel") {
-            return isMin ? "휠: 줌, 드래그: 이동" : "A/B 픽셀 차이 영역을 빨간 박스로 표시합니다. 마우스 휠/+/−: 줌, 드래그: 패닝";
+            return isMin ? "휠: 줌, 드래그: 이동" : "A 전용은 빨강, B 전용은 파랑으로 표시합니다. 마우스 휠/+/−: 줌, 드래그: 패닝";
           }
           return isMin ? "휠: 줌, 드래그: 이동" : "마우스 휠/+/−: 줌, 드래그: 패닝";
         }
@@ -660,8 +774,9 @@
           });
           document.body.classList.toggle("window-size-min", windowSizeMode === "min");
           document.body.classList.toggle("window-size-mini", windowSizeMode === "mini");
+          updateDockUi();
           if (miniFloatingBar) {
-            miniFloatingBar.setAttribute("aria-hidden", windowSizeMode === "mini" ? "false" : "true");
+            miniFloatingBar.setAttribute("aria-hidden", windowSizeMode === "mini" || windowSizeMode === "dock" ? "false" : "true");
           }
           if (windowSizeMode === "mini") {
             requestAnimationFrame(() => {
@@ -728,45 +843,20 @@
           ctx.fill();
           ctx.restore();
         }
-        function buildDiffRects(imageA, imageB) {
-          const targetW = 320;
-          const scale = Math.max(1, Math.ceil(Math.max(imageA.width, imageB.width) / targetW));
-          const w = Math.max(1, Math.floor(Math.min(imageA.width, imageB.width) / scale));
-          const h = Math.max(1, Math.floor(Math.min(imageA.height, imageB.height) / scale));
-          const c1 = document.createElement("canvas");
-          const c2 = document.createElement("canvas");
-          c1.width = w; c1.height = h; c2.width = w; c2.height = h;
-          const x1 = c1.getContext("2d", { willReadFrequently: true });
-          const x2 = c2.getContext("2d", { willReadFrequently: true });
-          x1.drawImage(imageA, 0, 0, w, h);
-          x2.drawImage(imageB, 0, 0, w, h);
-          const d1 = x1.getImageData(0, 0, w, h).data;
-          const d2 = x2.getImageData(0, 0, w, h).data;
-          const mask = new Uint8Array(w * h);
-          const threshold = diffThreshold;
-          for (let i = 0, p = 0; i < d1.length; i += 4, p += 1) {
-            const dr = Math.abs(d1[i] - d2[i]);
-            const dg = Math.abs(d1[i + 1] - d2[i + 1]);
-            const db = Math.abs(d1[i + 2] - d2[i + 2]);
-            const da = Math.abs(d1[i + 3] - d2[i + 3]);
-            const diff = dr + dg + db + da * 0.6;
-            mask[p] = diff >= threshold ? 1 : 0;
-          }
+        function buildRectsFromMask(mask, w, h, minArea, maxRects) {
           const visited = new Uint8Array(w * h);
           const rects = [];
-          const minArea = diffMinArea;
-          const maxRects = 120;
           const queueX = new Int32Array(w * h);
           const queueY = new Int32Array(w * h);
-          const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+          const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
           for (let y = 0; y < h; y += 1) {
             for (let x = 0; x < w; x += 1) {
               const idx = y * w + x;
               if (!mask[idx] || visited[idx]) continue;
-              let head = 0, tail = 0;
+              let head = 0; let tail = 0;
               queueX[tail] = x; queueY[tail] = y; tail += 1;
               visited[idx] = 1;
-              let minX = x, minY = y, maxX = x, maxY = y, count = 0;
+              let minX = x; let minY = y; let maxX = x; let maxY = y; let count = 0;
               while (head < tail) {
                 const cx = queueX[head], cy = queueY[head]; head += 1;
                 count += 1;
@@ -793,15 +883,59 @@
           }
           return rects;
         }
-        function drawDiffRectangles(baseX, baseY, drawW, drawH, rects) {
-          const boxOpacityRatio = Number(opacityRange.value) / 100;
+        function buildDiffRects(imageA, imageB) {
+          const targetW = 320;
+          const scale = Math.max(1, Math.ceil(Math.max(imageA.width, imageB.width) / targetW));
+          const w = Math.max(1, Math.floor(Math.min(imageA.width, imageB.width) / scale));
+          const h = Math.max(1, Math.floor(Math.min(imageA.height, imageB.height) / scale));
+          const c1 = document.createElement("canvas");
+          const c2 = document.createElement("canvas");
+          c1.width = w; c1.height = h; c2.width = w; c2.height = h;
+          const x1 = c1.getContext("2d", { willReadFrequently: true });
+          const x2 = c2.getContext("2d", { willReadFrequently: true });
+          x1.drawImage(imageA, 0, 0, w, h);
+          x2.drawImage(imageB, 0, 0, w, h);
+          const d1 = x1.getImageData(0, 0, w, h).data;
+          const d2 = x2.getImageData(0, 0, w, h).data;
+          const maskAOnly = new Uint8Array(w * h);
+          const maskBOnly = new Uint8Array(w * h);
+          const threshold = diffThreshold;
+          for (let i = 0, p = 0; i < d1.length; i += 4, p += 1) {
+            const dr = Math.abs(d1[i] - d2[i]);
+            const dg = Math.abs(d1[i + 1] - d2[i + 1]);
+            const db = Math.abs(d1[i + 2] - d2[i + 2]);
+            const aAlpha = d1[i + 3];
+            const bAlpha = d2[i + 3];
+            const alphaDiff = aAlpha - bAlpha;
+            const diff = dr + dg + db + Math.abs(alphaDiff) * 0.6;
+            if (diff < threshold) continue;
+
+            const sumA = d1[i] + d1[i + 1] + d1[i + 2];
+            const sumB = d2[i] + d2[i + 1] + d2[i + 2];
+            const isAOnly = alphaDiff > directionalAlphaBias
+              || (Math.abs(alphaDiff) <= directionalAlphaBias && sumA >= sumB + directionalLumaBias);
+            if (isAOnly) {
+              maskAOnly[p] = 1;
+            } else {
+              maskBOnly[p] = 1;
+            }
+          }
+          const minArea = diffMinArea;
+          const maxRects = 120;
+          return {
+            aOnly: buildRectsFromMask(maskAOnly, w, h, minArea, maxRects),
+            bOnly: buildRectsFromMask(maskBOnly, w, h, minArea, maxRects)
+          };
+        }
+        function drawDiffRectangles(baseX, baseY, drawW, drawH, rects, color, opacityPercent) {
+          const boxOpacityRatio = Number(opacityPercent) / 100;
           const strokeAlpha = 0.35 + boxOpacityRatio * 0.65;
           const fillAlpha = 0.06 + boxOpacityRatio * 0.56;
 
           ctx.save();
           ctx.lineWidth = 2;
-          ctx.strokeStyle = "rgba(255, 59, 48, " + strokeAlpha.toFixed(3) + ")";
-          ctx.fillStyle = "rgba(255, 59, 48, " + fillAlpha.toFixed(3) + ")";
+          ctx.strokeStyle = "rgba(" + color + ", " + strokeAlpha.toFixed(3) + ")";
+          ctx.fillStyle = "rgba(" + color + ", " + fillAlpha.toFixed(3) + ")";
           for (let i = 0; i < rects.length; i += 1) {
             const r = rects[i];
             const x = baseX + r.x * drawW;
@@ -839,8 +973,10 @@
           ctx.drawImage(imgA, leftX, y, drawW, drawH);
           ctx.drawImage(imgB, rightX, y, drawW, drawH);
 
-          drawDiffRectangles(leftX, y, drawW, drawH, diffRects);
-          drawDiffRectangles(rightX, y, drawW, drawH, diffRects);
+          drawDiffRectangles(leftX, y, drawW, drawH, diffRectsAOnly, "255, 59, 48", opacityRange.value);
+          drawDiffRectangles(leftX, y, drawW, drawH, diffRectsBOnly, "10, 132, 255", opacityRangeB.value);
+          drawDiffRectangles(rightX, y, drawW, drawH, diffRectsAOnly, "255, 59, 48", opacityRange.value);
+          drawDiffRectangles(rightX, y, drawW, drawH, diffRectsBOnly, "10, 132, 255", opacityRangeB.value);
 
           ctx.fillStyle = isLight ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.92)";
           ctx.font = "12px Inter, sans-serif";
@@ -848,18 +984,21 @@
           ctx.fillText("B", rightX + 6, y + 16);
         }
         function updateDiffCountText() {
-          diffCountText.textContent = "Diff " + diffRects.length + "개";
+          const total = diffRectsAOnly.length + diffRectsBOnly.length;
+          diffCountText.textContent = "Diff " + total + "개 (A " + diffRectsAOnly.length + " / B " + diffRectsBOnly.length + ")";
         }
         function recomputeDiffRects() {
           if (!imgA || !imgB) return;
-          diffRects = buildDiffRects(imgA, imgB);
+          const next = buildDiffRects(imgA, imgB);
+          diffRectsAOnly = next.aOnly;
+          diffRectsBOnly = next.bOnly;
           updateDiffCountText();
         }
         function applyPreset(presetName) {
           const presetMap = {
-            precise: { threshold: 28, minArea: 10 },
-            normal: { threshold: 42, minArea: 20 },
-            relaxed: { threshold: 64, minArea: 36 }
+            precise: { threshold: 28, minArea: 10, alphaBias: 6, lumaBias: 6 },
+            normal: { threshold: 42, minArea: 20, alphaBias: 12, lumaBias: 10 },
+            relaxed: { threshold: 64, minArea: 36, alphaBias: 20, lumaBias: 18 }
           };
           const preset = presetMap[presetName];
           if (!preset) return;
@@ -867,6 +1006,8 @@
           activePreset = presetName;
           diffThreshold = preset.threshold;
           diffMinArea = preset.minArea;
+          directionalAlphaBias = preset.alphaBias;
+          directionalLumaBias = preset.lumaBias;
           diffThresholdRange.value = String(diffThreshold);
           diffMinAreaRange.value = String(diffMinArea);
           diffThresholdValue.textContent = String(diffThreshold);
@@ -970,7 +1111,9 @@
             revokeUrls();
             const [a, b] = await Promise.all([bytesToImage(payload.a.bytes, "A"), bytesToImage(payload.b.bytes, "B")]);
             imgA = a.image; imgB = b.image; urlA = a.url; urlB = b.url; hasTwoFrames = true;
-            diffRects = buildDiffRects(imgA, imgB);
+            const next = buildDiffRects(imgA, imgB);
+            diffRectsAOnly = next.aOnly;
+            diffRectsBOnly = next.bOnly;
             updateDiffCountText();
             resetView(); showOnly(activeTab === "pixel" ? emptyOverlay : null); draw();
           } catch (err) {
@@ -984,27 +1127,33 @@
             activeTab = tab.dataset.tab || "opacity";
             setVisualThemeByTab(activeTab);
             if (activeTab === "opacity") {
+              opacityControls.style.display = "flex";
               pixelControls.style.display = "none";
               pixelControls2.style.display = "none";
+              pixelOpacityBControls.style.display = "none";
               pixelPresets.style.display = "none";
               opacityLabel.textContent = "전경(B) 투명도";
               tabHint.textContent = "마우스 휠/+/−: 줌, 드래그: 패닝";
               if (hasTwoFrames && imgA && imgB) showOnly(null); else { resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay); }
               draw();
             } else if (activeTab === "swipe") {
+              opacityControls.style.display = "none";
               pixelControls.style.display = "none";
               pixelControls2.style.display = "none";
+              pixelOpacityBControls.style.display = "none";
               pixelPresets.style.display = "none";
               opacityLabel.textContent = "전경(B) 투명도";
               tabHint.textContent = "핸들 드래그: 스와이프, 마우스 휠/+/−: 줌, 드래그: 패닝";
               if (hasTwoFrames && imgA && imgB) showOnly(null); else { resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay); }
               draw();
             } else {
+              opacityControls.style.display = "flex";
               pixelControls.style.display = "flex";
               pixelControls2.style.display = "flex";
+              pixelOpacityBControls.style.display = "flex";
               pixelPresets.style.display = "flex";
-              opacityLabel.textContent = "Diff 박스 투명도";
-              tabHint.textContent = "A/B 픽셀 차이 영역을 빨간 박스로 표시합니다. 마우스 휠/+/−: 줌, 드래그: 패닝";
+              opacityLabel.textContent = "A-only 박스 투명도";
+              tabHint.textContent = "A에만 있으면 빨강, B에만 있으면 파랑으로 표시합니다. 마우스 휠/+/−: 줌, 드래그: 패닝";
               if (hasTwoFrames && imgA && imgB) showOnly(null); else { resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay); }
               draw();
             }
@@ -1013,6 +1162,7 @@
         });
 
         opacityRange.addEventListener("input", () => { opacityValue.textContent = opacityRange.value + "%"; draw(); });
+        opacityRangeB.addEventListener("input", () => { opacityValueB.textContent = opacityRangeB.value + "%"; draw(); });
         diffThresholdRange.addEventListener("input", () => {
           clearPresetSelection();
           diffThreshold = Number(diffThresholdRange.value);
@@ -1046,6 +1196,7 @@
           btn.addEventListener("click", () => {
             const mode = btn.dataset.sizeMode;
             if (!mode) return;
+            if (mode !== "dock") lastNormalMode = mode;
             postToPlugin({ type: "set-window-size-mode", mode });
           });
         });
@@ -1085,6 +1236,11 @@
           miniFloatingInner.addEventListener("lostpointercapture", () => {
             isMiniDragging = false;
             miniFloatingInner.classList.remove("dragging");
+          });
+        }
+        if (miniDockHandle) {
+          miniDockHandle.addEventListener("click", () => {
+            postToPlugin({ type: "set-window-size-mode", mode: lastNormalMode || "default" });
           });
         }
         window.addEventListener("resize", () => {
@@ -1157,7 +1313,7 @@
           if (msg.type === "selection-state") {
             hasTwoFrames = !!msg.ok;
             if (!msg.ok) {
-              imgA = null; imgB = null; diffRects = [];
+              imgA = null; imgB = null; diffRectsAOnly = []; diffRectsBOnly = [];
               updateDiffCountText();
               revokeUrls(); draw(); resetEmptyMessage("Figma 캔버스에서 비교할 프레임 2개를 선택해 주세요."); showOnly(emptyOverlay);
             }
@@ -1170,6 +1326,12 @@
           } else if (msg.type === "window-size-state") {
             if (typeof msg.mode === "string") {
               windowSizeMode = msg.mode;
+              if (typeof msg.dockSide === "string" && (msg.dockSide === "left" || msg.dockSide === "right")) {
+                dockSide = msg.dockSide;
+              }
+              if (windowSizeMode !== "dock" && windowSizeMode !== "mini") {
+                lastNormalMode = windowSizeMode;
+              }
               updateWindowSizeModeUi();
             }
           }

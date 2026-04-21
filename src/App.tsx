@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react'
 import { generateComparisonReport, type ReportPayload, type SerializedNode } from './gemini'
 import { generateComparisonReportGroq } from './groq'
+import { generateComparisonReportClaude } from './claude'
 import styles from './App.module.css'
 
 const GEMINI_KEY_STORAGE = 'figma-frame-compare-gemini-api-key'
 const GROQ_KEY_STORAGE = 'figma-frame-compare-groq-api-key'
+const CLAUDE_KEY_STORAGE = 'figma-frame-compare-claude-api-key'
 const PROVIDER_STORAGE = 'figma-frame-compare-provider'
 
-type Provider = 'mock' | 'gemini' | 'groq'
+type Provider = 'mock' | 'gemini' | 'groq' | 'claude'
 
 function getMockReport(): ReportPayload {
   return {
@@ -35,7 +37,7 @@ export default function App() {
   const [provider, setProvider] = useState<Provider>(() => {
     try {
       const v = localStorage.getItem(PROVIDER_STORAGE) as Provider | null
-      return v === 'gemini' || v === 'groq' ? v : 'mock'
+      return v === 'gemini' || v === 'groq' || v === 'claude' ? v : 'mock'
     } catch {
       return 'mock'
     }
@@ -50,6 +52,13 @@ export default function App() {
   const [groqKey, setGroqKey] = useState(() => {
     try {
       return localStorage.getItem(GROQ_KEY_STORAGE) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  const [claudeKey, setClaudeKey] = useState(() => {
+    try {
+      return localStorage.getItem(CLAUDE_KEY_STORAGE) ?? ''
     } catch {
       return ''
     }
@@ -119,10 +128,11 @@ export default function App() {
       localStorage.setItem(PROVIDER_STORAGE, provider)
       if (apiKey) localStorage.setItem(GEMINI_KEY_STORAGE, apiKey)
       if (groqKey) localStorage.setItem(GROQ_KEY_STORAGE, groqKey)
+      if (claudeKey) localStorage.setItem(CLAUDE_KEY_STORAGE, claudeKey)
     } catch {
       // ignore
     }
-  }, [provider, apiKey, groqKey])
+  }, [provider, apiKey, groqKey, claudeKey])
 
   const handleCompare = useCallback(async () => {
     if (!isActive) return
@@ -132,6 +142,10 @@ export default function App() {
     }
     if (provider === 'groq' && !groqKey.trim()) {
       setError('Groq API 키를 입력해 주세요. console.groq.com 에서 무료 발급.')
+      return
+    }
+    if (provider === 'claude' && !claudeKey.trim()) {
+      setError('Claude API 키를 입력해 주세요. (sk-ant-...)')
       return
     }
     setError(null)
@@ -160,7 +174,9 @@ export default function App() {
         const report: ReportPayload =
           provider === 'groq'
             ? await generateComparisonReportGroq(groqKey.trim(), frameA, frameB)
-            : await generateComparisonReport(apiKey.trim(), frameA, frameB)
+            : provider === 'claude'
+              ? await generateComparisonReportClaude(claudeKey.trim(), frameA, frameB)
+              : await generateComparisonReport(apiKey.trim(), frameA, frameB)
         sendToFigma({ type: 'compareFrames', payload: report })
       }
     } catch (e) {
@@ -168,14 +184,16 @@ export default function App() {
     } finally {
       setIsComparing(false)
     }
-  }, [isActive, provider, apiKey, groqKey, sendToFigma])
+  }, [isActive, provider, apiKey, groqKey, claudeKey, sendToFigma])
 
-  const needKey = provider === 'gemini' || provider === 'groq'
+  const needKey = provider === 'gemini' || provider === 'groq' || provider === 'claude'
   const buttonLabel =
     provider === 'mock'
       ? 'Compare frames (테스트)'
       : provider === 'groq'
         ? 'Compare frames (Groq)'
+      : provider === 'claude'
+        ? 'Compare frames (Claude)'
         : 'Compare frames (Gemini)'
 
   return (
@@ -235,6 +253,7 @@ export default function App() {
         >
           <option value="mock">Mock (무료 테스트)</option>
           <option value="groq">Groq (무료 추천, Llama)</option>
+          <option value="claude">Claude (Anthropic)</option>
           <option value="gemini">Gemini (Google)</option>
         </select>
       </section>
@@ -272,6 +291,22 @@ export default function App() {
           />
         </section>
       )}
+      {provider === 'claude' && (
+        <section className={styles.section}>
+          <label className={styles.label}>
+            Claude API 키
+            <span className={styles.optional}>(저장됨, console.anthropic.com)</span>
+          </label>
+          <input
+            type="password"
+            className={styles.input}
+            placeholder="sk-ant-..."
+            value={claudeKey}
+            onChange={(e) => setClaudeKey(e.target.value)}
+            autoComplete="off"
+          />
+        </section>
+      )}
 
       <section className={styles.section} aria-label="Overlay opacity" data-disabled={!isActive}>
         <label className={styles.label}>
@@ -294,7 +329,13 @@ export default function App() {
           type="button"
           className={styles.primaryButton}
           onClick={handleCompare}
-          disabled={!isActive || isComparing || (needKey && provider === 'gemini' && !apiKey.trim()) || (needKey && provider === 'groq' && !groqKey.trim())}
+          disabled={
+            !isActive ||
+            isComparing ||
+            (needKey && provider === 'gemini' && !apiKey.trim()) ||
+            (needKey && provider === 'groq' && !groqKey.trim()) ||
+            (needKey && provider === 'claude' && !claudeKey.trim())
+          }
         >
           {isComparing ? '분석 중…' : buttonLabel}
         </button>
