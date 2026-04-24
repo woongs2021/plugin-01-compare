@@ -1,5 +1,4 @@
 const UI_SIZE_BY_MODE = {
-  dock: { width: 28, height: 120 },
   mini: { width: 280, height: 60 },
   min: { width: 600, height: 420 },
   default: { width: 900, height: 700 },
@@ -7,7 +6,6 @@ const UI_SIZE_BY_MODE = {
 };
 
 let uiSizeMode = "default";
-let uiDockSide = "";
 const SCREEN_SAFE_MARGIN = 100;
 
 figma.showUI(__html__, UI_SIZE_BY_MODE.default);
@@ -19,8 +17,7 @@ function clamp(value, min, max) {
 function postWindowSizeState() {
   figma.ui.postMessage({
     type: "window-size-state",
-    mode: uiSizeMode,
-    dockSide: uiDockSide
+    mode: uiSizeMode
   });
 }
 
@@ -40,18 +37,12 @@ function getViewportPixelSize() {
   return { width, height };
 }
 
-function getSafeUiPosition(size, dockSide = "") {
+function getSafeUiPosition(size) {
   const viewportSize = getViewportPixelSize();
   const maxXRaw = viewportSize.width - size.width;
   const maxYRaw = viewportSize.height - size.height;
   const maxX = Math.max(0, maxXRaw);
   const maxY = Math.max(0, maxYRaw);
-
-  if (dockSide === "left" || dockSide === "right") {
-    const x = dockSide === "left" ? 0 : maxX;
-    const y = clamp(Math.round((viewportSize.height - size.height) / 2), 0, maxY);
-    return { x, y };
-  }
 
   const minX = Math.min(SCREEN_SAFE_MARGIN, maxX);
   const minY = Math.min(SCREEN_SAFE_MARGIN, maxY);
@@ -64,10 +55,10 @@ function getSafeUiPosition(size, dockSide = "") {
   };
 }
 
-function moveUiToSafePosition(size, dockSide = "") {
+function moveUiToSafePosition(size) {
   const uiWithMove = figma.ui;
   if (!uiWithMove || typeof uiWithMove.move !== "function") return;
-  const target = getSafeUiPosition(size, dockSide);
+  const target = getSafeUiPosition(size);
 
   const attemptMove = () => {
     try {
@@ -84,32 +75,27 @@ function moveUiToSafePosition(size, dockSide = "") {
 
 function resolveWindowPlacement(requestedMode) {
   const requestedSize = UI_SIZE_BY_MODE[requestedMode];
+  if (!requestedSize) {
+    return { mode: "default", size: UI_SIZE_BY_MODE.default };
+  }
   const viewportSize = getViewportPixelSize();
 
-  if (requestedMode === "mini" || requestedMode === "dock" || requestedMode === "max") {
-    return {
-      mode: requestedMode,
-      size: requestedSize,
-      dockSide: requestedMode === "dock" ? uiDockSide || "right" : ""
-    };
+  if (requestedMode === "mini" || requestedMode === "max") {
+    return { mode: requestedMode, size: requestedSize };
   }
 
-  // 일반 컨테이너가 좌/우 스크린 한계에 닿으면 dock 모드로 전환
-  const horizontalRoom = viewportSize.width - requestedSize.width - SCREEN_SAFE_MARGIN * 2;
-  if (horizontalRoom < 0) {
-    const dockSide = uiDockSide === "left" || uiDockSide === "right" ? uiDockSide : "right";
-    return {
-      mode: "dock",
-      size: UI_SIZE_BY_MODE.dock,
-      dockSide
-    };
-  }
-
-  return {
-    mode: requestedMode,
-    size: requestedSize,
-    dockSide: ""
+  const horizontalRoom = (mode) => {
+    const sz = UI_SIZE_BY_MODE[mode];
+    return viewportSize.width - sz.width - SCREEN_SAFE_MARGIN * 2;
   };
+
+  if (horizontalRoom(requestedMode) >= 0) {
+    return { mode: requestedMode, size: requestedSize };
+  }
+  if (horizontalRoom("min") >= 0) {
+    return { mode: "min", size: UI_SIZE_BY_MODE.min };
+  }
+  return { mode: "mini", size: UI_SIZE_BY_MODE.mini };
 }
 
 function setWindowSizeMode(mode) {
@@ -117,11 +103,10 @@ function setWindowSizeMode(mode) {
 
   const resolved = resolveWindowPlacement(mode);
   uiSizeMode = resolved.mode;
-  uiDockSide = resolved.dockSide;
   const nextSize = resolved.size;
 
   figma.ui.resize(nextSize.width, nextSize.height);
-  moveUiToSafePosition(nextSize, uiDockSide);
+  moveUiToSafePosition(nextSize);
   postWindowSizeState();
 }
 
